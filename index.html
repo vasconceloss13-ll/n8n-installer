@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Schema n8n · Lunar Labs</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Sora:wght@300;400;600;700;800&display=swap');
+  :root {
+    --accent: #635BF7; --accent-dim: #635BF733; --bg: #0a0a0f; --bg-panel: #13131d;
+    --bg-input: #1c1c2a; --border: #2a2a3d; --text: #e8e8f0; --text-dim: #8888a0;
+    --green: #3ddc97; --red: #ff5c72; --amber: #ffc857;
+    --mono: 'Space Mono', monospace; --sans: 'Sora', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.5;
+    background-image: radial-gradient(circle at 20% 0%, #635BF71a 0%, transparent 45%),
+                      radial-gradient(circle at 90% 100%, #635BF712 0%, transparent 40%);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 24px 80px; }
+  header { margin-bottom: 36px; }
+  .badge {
+    display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent-dim);
+    padding: 5px 12px; border-radius: 100px; margin-bottom: 20px;
+  }
+  h1 { font-size: clamp(32px, 5vw, 54px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.05; margin-bottom: 14px; }
+  h1 .light { font-weight: 300; color: var(--text-dim); }
+  .sub { color: var(--text-dim); font-size: 16px; max-width: 560px; }
+
+  /* checklist requisitos */
+  .reqs {
+    background: linear-gradient(135deg, #635BF714, #635BF706); border: 1px solid var(--accent-dim);
+    border-radius: 16px; padding: 22px 26px; margin-bottom: 24px;
+  }
+  .reqs h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .reqs ol { list-style: none; counter-reset: step; display: grid; gap: 12px; }
+  .reqs li { counter-increment: step; display: flex; gap: 13px; align-items: flex-start; font-size: 14px; color: var(--text); }
+  .reqs li::before {
+    content: counter(step); flex-shrink: 0; width: 24px; height: 24px; border-radius: 7px;
+    background: var(--accent); color: #fff; font-family: var(--mono); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .reqs li b { color: #fff; font-weight: 600; }
+  .reqs li span { color: var(--text-dim); }
+  .reqs code { background: var(--bg-input); padding: 1px 7px; border-radius: 4px; font-family: var(--mono); font-size: 12.5px; color: var(--green); }
+
+  /* banner senhas */
+  .save-banner {
+    display: flex; gap: 14px; align-items: flex-start; background: #ffc85710; border: 1px solid #ffc85740;
+    border-radius: 14px; padding: 16px 20px; margin-bottom: 24px;
+  }
+  .save-banner .ico { font-size: 20px; flex-shrink: 0; line-height: 1.3; }
+  .save-banner p { font-size: 13.5px; color: #ffe2a8; }
+  .save-banner b { color: #fff; }
+  .save-banner .crit { color: var(--amber); font-weight: 700; }
+
+  .controls { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 24px; }
+  .controls-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+  .controls-head h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); font-weight: 600; }
+  .mode-toggle { display: flex; gap: 6px; background: var(--bg-input); padding: 5px; border-radius: 10px; }
+  .mode-toggle button { font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 8px 16px; border: none; background: transparent; color: var(--text-dim); border-radius: 7px; cursor: pointer; transition: all .18s; }
+  .mode-toggle button.active { background: var(--accent); color: #fff; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 680px){ .grid { grid-template-columns: 1fr; } }
+  .field label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 7px; font-family: var(--mono); letter-spacing: .3px; display: flex; align-items: center; gap: 6px; }
+  .field label .pin { color: var(--amber); font-size: 11px; }
+  .field-input { position: relative; display: flex; }
+  .field input { width: 100%; background: var(--bg-input); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 13px; padding: 12px 14px; border-radius: 9px; transition: border .18s; }
+  .field input:focus { outline: none; border-color: var(--accent); }
+  .field.secret input { padding-right: 44px; color: var(--green); }
+  .field.critical input { color: var(--amber); }
+  .field.invalid input { border-color: var(--red); }
+  .field-warn { display: none; color: var(--red); font-size: 11.5px; margin-top: 6px; font-family: var(--mono); }
+  .field.invalid .field-warn { display: block; }
+  .field-hint { display: none; color: var(--amber); font-size: 11px; margin-top: 6px; font-family: var(--mono); }
+  .field.critical .field-hint { display: block; }
+  .regen { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: var(--accent-dim); border: none; color: var(--accent); width: 32px; height: 32px; border-radius: 7px; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: all .18s; }
+  .regen:hover { background: var(--accent); color: #fff; transform: translateY(-50%) rotate(90deg); }
+
+  .advanced-toggle { margin-top: 22px; font-family: var(--mono); font-size: 12.5px; color: var(--text-dim); background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 6px 0; transition: color .18s; }
+  .advanced-toggle:hover { color: var(--accent); }
+  .advanced-toggle .chev { transition: transform .2s; }
+  .advanced-toggle.open .chev { transform: rotate(180deg); }
+  .advanced-panel { max-height: 0; overflow: hidden; transition: max-height .3s ease, margin .3s ease, opacity .25s; opacity: 0; }
+  .advanced-panel.open { max-height: 180px; margin-top: 16px; opacity: 1; }
+  .arch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .arch-row .lbl { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
+
+  .actions { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+  .btn { font-family: var(--sans); font-weight: 700; font-size: 14px; padding: 13px 24px; border-radius: 10px; border: none; cursor: pointer; transition: all .18s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #7169f9; transform: translateY(-1px); }
+  .btn-ghost { background: var(--bg-input); color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  .output { margin-top: 8px; }
+  .output-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px; }
+  .output-head h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); font-weight: 600; }
+  .filename { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+  pre { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; padding: 24px; overflow-x: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.7; color: #c5c5d8; max-height: 560px; overflow-y: auto; transition: opacity .2s; }
+  pre.blocked { opacity: .35; }
+  pre::-webkit-scrollbar { width: 10px; height: 10px; }
+  pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  pre .c { color: #555570; font-style: italic; }
+
+  .note { margin-top: 20px; padding: 16px 18px; background: #635BF70d; border: 1px solid var(--accent-dim); border-radius: 10px; font-size: 13px; color: var(--text-dim); }
+  .note strong { color: var(--text); }
+  .note code { background: var(--bg-input); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--green); }
+  .banner-warn { margin-top: 16px; padding: 14px 18px; background: #ff5c7215; border: 1px solid #ff5c7244; border-radius: 10px; font-size: 13px; color: #ffb3bd; display: none; }
+  .banner-warn.show { display: block; }
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120px); background: var(--green); color: #04130c; font-weight: 700; font-size: 14px; padding: 13px 26px; border-radius: 10px; transition: transform .3s cubic-bezier(.2,.9,.3,1.3); z-index: 50; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">Lunar Labs · n8n Deploy Kit</span>
+    <h1>Gerador de Schema<br><span class="light">n8n self-hosted</span></h1>
+    <p class="sub">Gera as chaves de segurança automaticamente e monta o schema completo. Escolha o ambiente, preencha seu domínio e copie. Simples assim.</p>
+  </header>
+
+  <!-- Requisitos EasyPanel -->
+  <div class="reqs" id="reqsBox">
+    <h3>✦ Antes de começar — pré-requisitos</h3>
+    <ol>
+      <li><div><b>VPS com EasyPanel instalado</b> <span>— um servidor rodando, com o EasyPanel ativo e acessível.</span></div></li>
+      <li><div><b>Domínio próprio comprado</b> <span>— ex.: <code>seudominio.com.br</code>, em qualquer registrador (Registro.br, Cloudflare, GoDaddy…).</span></div></li>
+      <li><div><b>DNS apontando pra VPS</b> <span>— crie registros <code>A</code> pros subdomínios apontando pro IP do servidor:</span></div></li>
+      <li><div><span>&nbsp;&nbsp;• <code id="dnsEditor">agentes.seudominio.com.br</code> → IP da VPS (editor)</span></div></li>
+      <li id="dnsWebhookLi"><div><span>&nbsp;&nbsp;• <code id="dnsWebhook">hooks.seudominio.com.br</code> → IP da VPS (webhook)</span></div></li>
+    </ol>
+  </div>
+
+  <!-- Requisitos Local -->
+  <div class="reqs" id="reqsBoxLocal" style="display:none;">
+    <h3>✦ Antes de começar — pré-requisitos</h3>
+    <ol>
+      <li><div><b>Docker + Docker Compose instalados</b> <span>— no Windows/Mac use o Docker Desktop; no Linux, o pacote <code>docker</code> + <code>docker-compose-plugin</code>.</span></div></li>
+      <li><div><b>Porta 5678 livre</b> <span>— é a porta que o editor vai usar. Se já tiver algo rodando nela, dá conflito.</span></div></li>
+      <li><div><b>~2 GB de RAM livres</b> <span>— suficiente pro modo simples. O modo fila pede um pouco mais.</span></div></li>
+      <li><div><b>Como subir:</b> <span>salve o arquivo como <code>docker-compose.yml</code>, abra o terminal na pasta dele e rode <code>docker compose up -d</code>. Depois acesse <code>http://localhost:5678</code>.</span></div></li>
+    </ol>
+  </div>
+
+  <!-- Aviso senhas -->
+  <div class="save-banner">
+    <span class="ico">🔐</span>
+    <p><b>Guarde estas senhas antes de fechar a página.</b> Elas são geradas no seu navegador e <b>não ficam salvas em lugar nenhum</b> — se você fechar a aba, somem. A <span class="crit">N8N Encryption Key</span> é a mais importante: ela criptografa as credenciais dos seus workflows e <span class="crit">não pode ser alterada depois</span>, senão você perde acesso a tudo que já salvou.</p>
+  </div>
+
+  <div class="controls">
+    <div class="controls-head">
+      <h2>Configuração</h2>
+      <div class="mode-toggle">
+        <button id="env-easypanel" class="active" onclick="setEnv('easypanel')">EasyPanel</button>
+        <button id="env-local" onclick="setEnv('local')">Local (Docker)</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="field">
+        <label>Nome do projeto</label>
+        <div class="field-input"><input id="projectName" value="lunarlabs" oninput="render()"></div>
+      </div>
+      <div class="field" id="domainField">
+        <label>Domínio do editor</label>
+        <div class="field-input"><input id="editorDomain" value="agentes.seudominio.com.br" oninput="render()"></div>
+        <span class="field-warn">⚠️ Troque pelo seu domínio real antes de usar</span>
+      </div>
+      <div class="field" id="webhookDomainField">
+        <label>Domínio do webhook</label>
+        <div class="field-input"><input id="webhookDomain" value="hooks.seudominio.com.br" oninput="render()"></div>
+        <span class="field-warn">⚠️ Troque pelo seu domínio real antes de usar</span>
+      </div>
+      <div class="field secret">
+        <label>Senha do Postgres</label>
+        <div class="field-input"><input id="pgPass" readonly><button class="regen" onclick="regen('pgPass')" title="Regenerar">↻</button></div>
+      </div>
+      <div class="field secret">
+        <label>Senha do Redis</label>
+        <div class="field-input"><input id="redisPass" readonly><button class="regen" onclick="regen('redisPass')" title="Regenerar">↻</button></div>
+      </div>
+      <div class="field secret critical">
+        <label>N8N Encryption Key <span class="pin">★ não mude depois</span></label>
+        <div class="field-input"><input id="encKey" readonly><button class="regen" onclick="regen('encKey')" title="Regenerar">↻</button></div>
+        <span class="field-hint">Só regenere numa instalação nova. Mudar com workflows existentes quebra as credenciais.</span>
+      </div>
+    </div>
+
+    <button class="advanced-toggle" id="advBtn" onclick="toggleAdvanced()">
+      <span class="chev">▾</span> Modo avançado
+    </button>
+    <div class="advanced-panel" id="advPanel">
+      <div class="arch-row">
+        <span class="lbl">Arquitetura:</span>
+        <div class="mode-toggle">
+          <button id="arch-simple" class="active" onclick="setArch('simple')">Simples</button>
+          <button id="arch-queue" onclick="setArch('queue')">Fila (queue)</button>
+        </div>
+        <span class="lbl" id="archHint">Recomendado pra maioria dos casos</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="regenAll()">↻ Gerar novas chaves</button>
+      <button class="btn btn-ghost" id="copyBtn" onclick="copySchema()">⧉ Copiar schema</button>
+      <button class="btn btn-ghost" id="dlBtn" onclick="downloadSchema()">↓ Baixar arquivo</button>
+    </div>
+  </div>
+
+  <div class="output">
+    <div class="output-head">
+      <h2>Schema gerado</h2>
+      <span class="filename" id="filename"></span>
+    </div>
+    <pre id="schemaOut"></pre>
+    <div class="banner-warn" id="bannerWarn">⚠️ Preencha um domínio real (sem "seudominio") pra liberar copiar e baixar.</div>
+    <div class="note" id="modeNote"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copiado!</div>
+
+<script>
+  let env = 'easypanel';
+  let arch = 'simple';
+  let advancedOpen = false;
+
+  function genHex(len) {
+    const bytes = new Uint8Array(len / 2);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+  }
+  function regen(id) {
+    const lengths = { pgPass: 32, redisPass: 32, encKey: 32 };
+    document.getElementById(id).value = genHex(lengths[id]); render();
+  }
+  function regenAll() { ['pgPass','redisPass','encKey'].forEach(regen); toast('Novas chaves geradas!'); }
+
+  function toggleAdvanced() {
+    advancedOpen = !advancedOpen;
+    document.getElementById('advBtn').classList.toggle('open', advancedOpen);
+    document.getElementById('advPanel').classList.toggle('open', advancedOpen);
+  }
+
+  function setEnv(m) {
+    env = m;
+    document.getElementById('env-easypanel').classList.toggle('active', m === 'easypanel');
+    document.getElementById('env-local').classList.toggle('active', m === 'local');
+    document.getElementById('reqsBox').style.display = m === 'easypanel' ? '' : 'none';
+    document.getElementById('reqsBoxLocal').style.display = m === 'local' ? '' : 'none';
+    updateDomainVisibility(); render();
+  }
+  function setArch(a) {
+    arch = a;
+    document.getElementById('arch-simple').classList.toggle('active', a === 'simple');
+    document.getElementById('arch-queue').classList.toggle('active', a === 'queue');
+    document.getElementById('archHint').textContent = a === 'simple' ? 'Recomendado pra maioria dos casos' : 'Pra produção com alto volume';
+    updateDomainVisibility(); render();
+  }
+  function updateDomainVisibility() {
+    const showEditor = env === 'easypanel';
+    const showWebhook = env === 'easypanel' && arch === 'queue';
+    document.getElementById('domainField').style.display = showEditor ? '' : 'none';
+    document.getElementById('webhookDomainField').style.display = showWebhook ? '' : 'none';
+    document.getElementById('dnsWebhookLi').style.display = showWebhook ? '' : 'none';
+  }
+
+  function vals() {
+    return {
+      project: document.getElementById('projectName').value.trim() || 'lunarlabs',
+      editorDomain: document.getElementById('editorDomain').value.trim(),
+      webhookDomain: document.getElementById('webhookDomain').value.trim(),
+      pg: document.getElementById('pgPass').value,
+      redis: document.getElementById('redisPass').value,
+      enc: document.getElementById('encKey').value,
+    };
+  }
+
+  function validateDomains() {
+    if (env !== 'easypanel') return true;
+    const v = vals();
+    let ok = true;
+    const editorBad = /seudominio/i.test(v.editorDomain) || v.editorDomain === '';
+    document.getElementById('domainField').classList.toggle('invalid', editorBad);
+    if (editorBad) ok = false;
+    if (arch === 'queue') {
+      const webhookBad = /seudominio/i.test(v.webhookDomain) || v.webhookDomain === '';
+      document.getElementById('webhookDomainField').classList.toggle('invalid', webhookBad);
+      if (webhookBad) ok = false;
+    } else {
+      document.getElementById('webhookDomainField').classList.remove('invalid');
+    }
+    return ok;
+  }
+
+  function buildEnv(v, baseUrl, hostValue, queueMode) {
+    const lines = [
+      'DB_TYPE=postgresdb','DB_POSTGRESDB_PORT=5432',
+      `DB_POSTGRESDB_HOST=${v.project}_postgres`,
+      'DB_POSTGRESDB_DATABASE=n8n','DB_POSTGRESDB_USER=postgres',
+      `DB_POSTGRESDB_PASSWORD=${v.pg}`,
+      `N8N_ENCRYPTION_KEY=${v.enc}`,
+      `N8N_HOST=${hostValue}`,
+      `N8N_EDITOR_BASE_URL=${baseUrl}`,
+      'N8N_PROTOCOL=https','NODE_ENV=production',
+      `WEBHOOK_URL=${baseUrl}`,
+    ];
+    if (queueMode) lines.push(
+      'EXECUTIONS_MODE=queue',
+      `QUEUE_BULL_REDIS_HOST=${v.project}_redis`,
+      `QUEUE_BULL_REDIS_PASSWORD=${v.redis}`,
+      'QUEUE_BULL_REDIS_PORT=6379','QUEUE_BULL_REDIS_DB=2',
+    );
+    lines.push(
+      'NODE_FUNCTION_ALLOW_EXTERNAL=*','EXECUTIONS_DATA_PRUNE=true',
+      'EXECUTIONS_DATA_MAX_AGE=336','GENERIC_TIMEZONE=America/Sao_Paulo',
+      'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true','N8N_ENABLE_EXECUTE_COMMAND=true',
+    );
+    return lines.join('\\r\\n');
+  }
+
+  function buildEasyPanel(v) {
+    const editorUrl = `https://${v.editorDomain}`;
+    const services = [];
+    if (arch === 'simple') {
+      services.push({ type: 'app', data: {
+        projectName: v.project, serviceName: 'n8n',
+        source: { type: 'image', image: 'n8nio/n8n:latest' },
+        env: buildEnv(v, editorUrl, v.editorDomain, false),
+        deploy: { replicas: 1, command: 'n8n start', zeroDowntime: true },
+        domains: [{ host: v.editorDomain, https: true, port: 5678, path: '/', middlewares: [], certificateResolver: '', wildcard: false, internalProtocol: 'http' }]
+      }});
+    } else {
+      const mk = (serviceName, command, domain) => ({ type: 'app', data: {
+        projectName: v.project, serviceName,
+        source: { type: 'image', image: 'n8nio/n8n:latest' },
+        env: buildEnv(v, editorUrl, v.editorDomain, true),
+        deploy: { replicas: 1, command, zeroDowntime: true },
+        domains: domain ? [{ host: domain, https: true, port: 5678, path: '/', middlewares: [], certificateResolver: '', wildcard: false, internalProtocol: 'http' }] : []
+      }});
+      services.push(mk('n8n_editor', 'n8n start', v.editorDomain));
+      services.push(mk('n8n_webhook', 'n8n webhook', v.webhookDomain));
+      services.push(mk('n8n_worker', 'n8n worker --concurrency=10', null));
+    }
+    services.push({ type: 'postgres', data: { projectName: v.project, serviceName: 'postgres', image: 'postgres:17', password: v.pg } });
+    if (arch === 'queue') services.push({ type: 'redis', data: { projectName: v.project, serviceName: 'redis', image: 'redis:7', password: v.redis } });
+    return JSON.stringify({ services }, null, 2);
+  }
+
+  function buildLocal(v) {
+    const baseUrl = 'http://localhost:5678';
+    const header = `# ${v.project} · n8n ${arch === 'queue' ? 'queue mode' : 'modo simples'} local (Docker Compose)
+# Suba com:  docker compose up -d
+# Editor em: http://localhost:5678
+# Sem proxy na frente: webhooks de teste funcionam direto.
+
+version: "3.8"
+`;
+    const baseEnv = `  DB_TYPE: postgresdb
+  DB_POSTGRESDB_HOST: postgres
+  DB_POSTGRESDB_PORT: 5432
+  DB_POSTGRESDB_DATABASE: n8n
+  DB_POSTGRESDB_USER: postgres
+  DB_POSTGRESDB_PASSWORD: ${v.pg}
+  N8N_ENCRYPTION_KEY: ${v.enc}
+  N8N_HOST: localhost
+  N8N_PROTOCOL: http
+  N8N_PORT: 5678
+  N8N_EDITOR_BASE_URL: ${baseUrl}
+  WEBHOOK_URL: ${baseUrl}
+  GENERIC_TIMEZONE: America/Sao_Paulo
+  N8N_ENABLE_EXECUTE_COMMAND: "true"
+  NODE_FUNCTION_ALLOW_EXTERNAL: "*"`;
+    const queueEnv = `  EXECUTIONS_MODE: queue
+  QUEUE_BULL_REDIS_HOST: redis
+  QUEUE_BULL_REDIS_PORT: 6379
+  QUEUE_BULL_REDIS_DB: "2"
+  QUEUE_BULL_REDIS_PASSWORD: ${v.redis}`;
+    const anchor = `
+x-n8n-env: &n8n-env
+${baseEnv}${arch === 'queue' ? '\n' + queueEnv : ''}
+`;
+    const postgres = `  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${v.pg}
+      POSTGRES_DB: n8n
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10`;
+    const redis = `  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: redis-server --requirepass ${v.redis}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${v.redis}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10`;
+    let services;
+    if (arch === 'simple') {
+      services = `services:
+${postgres}
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    command: start
+    ports:
+      - "5678:5678"
+    environment:
+      <<: *n8n-env
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  pg_data:
+  n8n_data:`;
+    } else {
+      services = `services:
+${postgres}
+
+${redis}
+
+  n8n_editor:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    command: start
+    ports:
+      - "5678:5678"
+    environment:
+      <<: *n8n-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  n8n_webhook:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    command: webhook
+    environment:
+      <<: *n8n-env
+    depends_on:
+      n8n_editor: { condition: service_started }
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+  n8n_worker:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    command: worker --concurrency=10
+    environment:
+      <<: *n8n-env
+    depends_on:
+      n8n_editor: { condition: service_started }
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  pg_data:
+  redis_data:
+  n8n_data:`;
+    }
+    return header + anchor + '\n' + services + '\n';
+  }
+
+  function currentSchema() {
+    const v = vals();
+    return env === 'easypanel' ? buildEasyPanel(v) : buildLocal(v);
+  }
+  function highlight(text) {
+    text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    text = text.replace(/(#.*)$/gm, '<span class="c">$1</span>');
+    return text;
+  }
+
+  function render() {
+    const v = vals();
+    // atualiza os exemplos de DNS no checklist com o que a pessoa digitou
+    document.getElementById('dnsEditor').textContent = v.editorDomain || 'agentes.seudominio.com.br';
+    document.getElementById('dnsWebhook').textContent = v.webhookDomain || 'hooks.seudominio.com.br';
+
+    const valid = validateDomains();
+    document.getElementById('schemaOut').innerHTML = highlight(currentSchema());
+    document.getElementById('schemaOut').classList.toggle('blocked', !valid);
+    document.getElementById('filename').textContent =
+      env === 'easypanel' ? `${v.project}-n8n-${arch}-easypanel.json` : 'docker-compose.yml';
+    document.getElementById('bannerWarn').classList.toggle('show', !valid);
+    document.getElementById('copyBtn').disabled = !valid;
+    document.getElementById('dlBtn').disabled = !valid;
+
+    let note = '';
+    if (env === 'easypanel' && arch === 'simple')
+      note = '<strong>EasyPanel · Simples:</strong> 1 serviço n8n + Postgres. Mais leve. Cole em Project → Create from Schema. O <code>N8N_HOST</code> vai só com o hostname (sem <code>https://</code>).';
+    else if (env === 'easypanel' && arch === 'queue')
+      note = '<strong>EasyPanel · Fila:</strong> editor + webhook + worker + Postgres + Redis. Escala melhor. Use domínios separados pra editor e webhook.';
+    else if (env === 'local' && arch === 'simple')
+      note = '<strong>Local · Simples:</strong> salve como <code>docker-compose.yml</code> e rode <code>docker compose up -d</code>. Editor em <code>http://localhost:5678</code>. Ideal pra desenvolver — webhooks de teste funcionam direto.';
+    else
+      note = '<strong>Local · Fila:</strong> replica a arquitetura de produção na sua máquina. Mais pesado (3 processos n8n), mas o que funciona aqui funciona em prod.';
+    document.getElementById('modeNote').innerHTML = note;
+  }
+
+  function copySchema() { if (!validateDomains()) return; navigator.clipboard.writeText(currentSchema()).then(() => toast('Schema copiado!')); }
+  function downloadSchema() {
+    if (!validateDomains()) return;
+    const v = vals();
+    const blob = new Blob([currentSchema()], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = env === 'easypanel' ? `${v.project}-n8n-${arch}-easypanel.json` : 'docker-compose.yml';
+    a.click(); toast('Download iniciado!');
+  }
+
+  let toastTimer;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  regen('pgPass'); regen('redisPass'); regen('encKey');
+  updateDomainVisibility(); render();
+</script>
+</body>
+</html>
