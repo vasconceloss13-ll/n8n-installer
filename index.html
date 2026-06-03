@@ -325,7 +325,7 @@
     lines.push(
       'NODE_FUNCTION_ALLOW_EXTERNAL=*','EXECUTIONS_DATA_PRUNE=true',
       'EXECUTIONS_DATA_MAX_AGE=336','GENERIC_TIMEZONE=America/Sao_Paulo',
-      'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true','N8N_ENABLE_EXECUTE_COMMAND=true',
+      'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true','NODES_EXCLUDE=[]',
     );
     return lines.join('\n');
   }
@@ -380,7 +380,7 @@ version: "3.8"
   N8N_EDITOR_BASE_URL: ${baseUrl}
   WEBHOOK_URL: ${baseUrl}
   GENERIC_TIMEZONE: America/Sao_Paulo
-  N8N_ENABLE_EXECUTE_COMMAND: "true"
+  NODES_EXCLUDE: "[]"
   NODE_FUNCTION_ALLOW_EXTERNAL: "*"`;
     const queueEnv = `  EXECUTIONS_MODE: queue
   QUEUE_BULL_REDIS_HOST: redis
