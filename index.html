@@ -97,6 +97,7 @@
   .btn-ghost { background: var(--bg-input); color: var(--text); border: 1px solid var(--border); }
   .btn-ghost:hover { border-color: var(--accent); }
   .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .btn-sm { padding: 8px 14px; font-size: 13px; }
 
   .output { margin-top: 8px; }
   .output-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 12px; }
@@ -113,6 +114,7 @@
   .note code { background: var(--bg-input); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--green); }
   .banner-warn { margin-top: 16px; padding: 14px 18px; background: #ff5c7215; border: 1px solid #ff5c7244; border-radius: 10px; font-size: 13px; color: #ffb3bd; display: none; }
   .banner-warn.show { display: block; }
+  .hint-generate { margin-top: 8px; padding: 28px; text-align: center; color: var(--text-dim); font-size: 14px; border: 1px dashed var(--border); border-radius: 14px; }
   .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120px); background: var(--green); color: #04130c; font-weight: 700; font-size: 14px; padding: 13px 26px; border-radius: 10px; transition: transform .3s cubic-bezier(.2,.9,.3,1.3); z-index: 50; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 </style>
@@ -166,16 +168,16 @@
     <div class="grid">
       <div class="field">
         <label>Nome do projeto</label>
-        <div class="field-input"><input id="projectName" value="lunarlabs" oninput="render()"></div>
+        <div class="field-input"><input id="projectName" value="lunarlabs" oninput="invalidate()"></div>
       </div>
       <div class="field" id="domainField">
         <label>Domínio do editor</label>
-        <div class="field-input"><input id="editorDomain" value="agentes.seudominio.com.br" oninput="render()"></div>
+        <div class="field-input"><input id="editorDomain" value="agentes.seudominio.com.br" oninput="invalidate()"></div>
         <span class="field-warn">⚠️ Troque pelo seu domínio real antes de usar</span>
       </div>
       <div class="field" id="webhookDomainField">
         <label>Domínio do webhook</label>
-        <div class="field-input"><input id="webhookDomain" value="hooks.seudominio.com.br" oninput="render()"></div>
+        <div class="field-input"><input id="webhookDomain" value="hooks.seudominio.com.br" oninput="invalidate()"></div>
         <span class="field-warn">⚠️ Troque pelo seu domínio real antes de usar</span>
       </div>
       <div class="field secret">
@@ -208,21 +210,24 @@
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" onclick="regenAll()">↻ Gerar novas chaves</button>
-      <button class="btn btn-ghost" id="copyBtn" onclick="copySchema()">⧉ Copiar schema</button>
-      <button class="btn btn-ghost" id="dlBtn" onclick="downloadSchema()">↓ Baixar arquivo</button>
+      <button class="btn btn-primary" id="genBtn" onclick="generateSchema()">✦ Gerar schema</button>
     </div>
   </div>
 
-  <div class="output">
+  <div class="output" id="outputBox" style="display:none;">
     <div class="output-head">
       <h2>Schema gerado</h2>
-      <span class="filename" id="filename"></span>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span class="filename" id="filename"></span>
+        <button class="btn btn-ghost btn-sm" id="copyBtn" onclick="copySchema()">⧉ Copiar</button>
+        <button class="btn btn-ghost btn-sm" id="dlBtn" onclick="downloadSchema()">↓ Baixar</button>
+      </div>
     </div>
     <pre id="schemaOut"></pre>
-    <div class="banner-warn" id="bannerWarn">⚠️ Preencha um domínio real (sem "seudominio") pra liberar copiar e baixar.</div>
     <div class="note" id="modeNote"></div>
   </div>
+
+  <div class="banner-warn" id="bannerWarn">⚠️ Preencha um domínio real (sem "seudominio") antes de gerar o schema.</div>
 </div>
 
 <div class="toast" id="toast">Copiado!</div>
@@ -239,9 +244,8 @@
   }
   function regen(id) {
     const lengths = { pgPass: 32, redisPass: 32, encKey: 32 };
-    document.getElementById(id).value = genHex(lengths[id]); render();
+    document.getElementById(id).value = genHex(lengths[id]); invalidate();
   }
-  function regenAll() { ['pgPass','redisPass','encKey'].forEach(regen); toast('Novas chaves geradas!'); }
 
   function toggleAdvanced() {
     advancedOpen = !advancedOpen;
@@ -255,14 +259,14 @@
     document.getElementById('env-local').classList.toggle('active', m === 'local');
     document.getElementById('reqsBox').style.display = m === 'easypanel' ? '' : 'none';
     document.getElementById('reqsBoxLocal').style.display = m === 'local' ? '' : 'none';
-    updateDomainVisibility(); render();
+    updateDomainVisibility(); updateChecklist(); invalidate();
   }
   function setArch(a) {
     arch = a;
     document.getElementById('arch-simple').classList.toggle('active', a === 'simple');
     document.getElementById('arch-queue').classList.toggle('active', a === 'queue');
     document.getElementById('archHint').textContent = a === 'simple' ? 'Recomendado pra maioria dos casos' : 'Pra produção com alto volume';
-    updateDomainVisibility(); render();
+    updateDomainVisibility(); updateChecklist(); invalidate();
   }
   function updateDomainVisibility() {
     const showEditor = env === 'easypanel';
@@ -323,7 +327,7 @@
       'EXECUTIONS_DATA_MAX_AGE=336','GENERIC_TIMEZONE=America/Sao_Paulo',
       'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true','N8N_ENABLE_EXECUTE_COMMAND=true',
     );
-    return lines.join('\\r\\n');
+    return lines.join('\n');
   }
 
   function buildEasyPanel(v) {
@@ -350,7 +354,7 @@
       services.push(mk('n8n_worker', 'n8n worker --concurrency=10', null));
     }
     services.push({ type: 'postgres', data: { projectName: v.project, serviceName: 'postgres', image: 'postgres:17', password: v.pg } });
-    if (arch === 'queue') services.push({ type: 'redis', data: { projectName: v.project, serviceName: 'redis', image: 'redis:7', password: v.redis } });
+    services.push({ type: 'redis', data: { projectName: v.project, serviceName: 'redis', image: 'redis:7', password: v.redis } });
     return JSON.stringify({ services }, null, 2);
   }
 
@@ -417,6 +421,8 @@ ${baseEnv}${arch === 'queue' ? '\n' + queueEnv : ''}
       services = `services:
 ${postgres}
 
+${redis}
+
   n8n:
     image: n8nio/n8n:latest
     restart: unless-stopped
@@ -427,11 +433,13 @@ ${postgres}
       <<: *n8n-env
     depends_on:
       postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
     volumes:
       - n8n_data:/home/node/.n8n
 
 volumes:
   pg_data:
+  redis_data:
   n8n_data:`;
     } else {
       services = `services:
@@ -493,24 +501,36 @@ volumes:
     return text;
   }
 
-  function render() {
+  // Atualiza os exemplos de DNS no checklist conforme digita
+  function updateChecklist() {
     const v = vals();
-    // atualiza os exemplos de DNS no checklist com o que a pessoa digitou
     document.getElementById('dnsEditor').textContent = v.editorDomain || 'agentes.seudominio.com.br';
     document.getElementById('dnsWebhook').textContent = v.webhookDomain || 'hooks.seudominio.com.br';
+  }
 
-    const valid = validateDomains();
+  // Chamado a cada alteração nos inputs: esconde o schema gerado (força novo "Gerar schema")
+  function invalidate() {
+    updateChecklist();
+    document.getElementById('outputBox').style.display = 'none';
+    document.getElementById('bannerWarn').classList.remove('show');
+  }
+
+  // Gera o schema de fato (só ao clicar no botão)
+  function generateSchema() {
+    if (!validateDomains()) {
+      document.getElementById('bannerWarn').classList.add('show');
+      document.getElementById('outputBox').style.display = 'none';
+      return;
+    }
+    document.getElementById('bannerWarn').classList.remove('show');
+    const v = vals();
     document.getElementById('schemaOut').innerHTML = highlight(currentSchema());
-    document.getElementById('schemaOut').classList.toggle('blocked', !valid);
     document.getElementById('filename').textContent =
       env === 'easypanel' ? `${v.project}-n8n-${arch}-easypanel.json` : 'docker-compose.yml';
-    document.getElementById('bannerWarn').classList.toggle('show', !valid);
-    document.getElementById('copyBtn').disabled = !valid;
-    document.getElementById('dlBtn').disabled = !valid;
 
     let note = '';
     if (env === 'easypanel' && arch === 'simple')
-      note = '<strong>EasyPanel · Simples:</strong> 1 serviço n8n + Postgres. Mais leve. Cole em Project → Create from Schema. O <code>N8N_HOST</code> vai só com o hostname (sem <code>https://</code>).';
+      note = '<strong>EasyPanel · Simples:</strong> n8n + Postgres + Redis. Cole em Project → Create from Schema. O <code>N8N_HOST</code> vai só com o hostname (sem <code>https://</code>).';
     else if (env === 'easypanel' && arch === 'queue')
       note = '<strong>EasyPanel · Fila:</strong> editor + webhook + worker + Postgres + Redis. Escala melhor. Use domínios separados pra editor e webhook.';
     else if (env === 'local' && arch === 'simple')
@@ -518,11 +538,13 @@ volumes:
     else
       note = '<strong>Local · Fila:</strong> replica a arquitetura de produção na sua máquina. Mais pesado (3 processos n8n), mas o que funciona aqui funciona em prod.';
     document.getElementById('modeNote').innerHTML = note;
+
+    document.getElementById('outputBox').style.display = '';
+    document.getElementById('outputBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  function copySchema() { if (!validateDomains()) return; navigator.clipboard.writeText(currentSchema()).then(() => toast('Schema copiado!')); }
+  function copySchema() { navigator.clipboard.writeText(currentSchema()).then(() => toast('Schema copiado!')); }
   function downloadSchema() {
-    if (!validateDomains()) return;
     const v = vals();
     const blob = new Blob([currentSchema()], { type: 'text/plain' });
     const a = document.createElement('a');
@@ -538,8 +560,11 @@ volumes:
     clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
   }
 
-  regen('pgPass'); regen('redisPass'); regen('encKey');
-  updateDomainVisibility(); render();
+  // init: gera chaves e prepara UI, sem gerar schema ainda
+  document.getElementById('pgPass').value = genHex(32);
+  document.getElementById('redisPass').value = genHex(32);
+  document.getElementById('encKey').value = genHex(32);
+  updateDomainVisibility(); updateChecklist();
 </script>
 </body>
 </html>
