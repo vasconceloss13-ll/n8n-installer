@@ -76,6 +76,10 @@
   .field.invalid input { border-color: var(--red); }
   .field-warn { display: none; color: var(--red); font-size: 11.5px; margin-top: 6px; font-family: var(--mono); }
   .field.invalid .field-warn { display: block; }
+  .field input::placeholder { color: #55556a; font-style: italic; }
+  .field .opt { color: var(--text-dim); font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .field-auto { display: none; color: var(--green); font-size: 11px; margin-top: 6px; font-family: var(--mono); }
+  .field.is-auto .field-auto { display: block; }
   .field-hint { display: none; color: var(--amber); font-size: 11px; margin-top: 6px; font-family: var(--mono); }
   .field.critical .field-hint { display: block; }
   .regen { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: var(--accent-dim); border: none; color: var(--accent); width: 32px; height: 32px; border-radius: 7px; cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; transition: all .18s; }
@@ -171,14 +175,16 @@
         <div class="field-input"><input id="projectName" value="lunarlabs" oninput="invalidate()"></div>
       </div>
       <div class="field" id="domainField">
-        <label>Domínio do editor</label>
-        <div class="field-input"><input id="editorDomain" value="agentes.seudominio.com.br" oninput="invalidate()"></div>
-        <span class="field-warn">⚠️ Troque pelo seu domínio real antes de usar</span>
+        <label>Domínio do editor <span class="opt">· opcional</span></label>
+        <div class="field-input"><input id="editorDomain" value="" placeholder="agentes.seudominio.com.br (deixe vazio p/ domínio automático)" oninput="invalidate()"></div>
+        <span class="field-warn">⚠️ Troque pelo seu domínio real, ou deixe vazio</span>
+        <span class="field-auto">✓ Vazio: o EasyPanel gera um domínio automático pra você</span>
       </div>
       <div class="field" id="webhookDomainField">
-        <label>Domínio do webhook</label>
-        <div class="field-input"><input id="webhookDomain" value="hooks.seudominio.com.br" oninput="invalidate()"></div>
-        <span class="field-warn">⚠️ Troque pelo seu domínio real antes de usar</span>
+        <label>Domínio do webhook <span class="opt">· opcional</span></label>
+        <div class="field-input"><input id="webhookDomain" value="" placeholder="hooks.seudominio.com.br (deixe vazio p/ domínio automático)" oninput="invalidate()"></div>
+        <span class="field-warn">⚠️ Troque pelo seu domínio real, ou deixe vazio</span>
+        <span class="field-auto">✓ Vazio: o EasyPanel gera um domínio automático pra você</span>
       </div>
       <div class="field secret">
         <label>Senha do Postgres</label>
@@ -291,15 +297,23 @@
     if (env !== 'easypanel') return true;
     const v = vals();
     let ok = true;
-    const editorBad = /seudominio/i.test(v.editorDomain) || v.editorDomain === '';
+    // vazio = válido (usa domínio automático). Só "seudominio" trava.
+    const editorBad = /seudominio/i.test(v.editorDomain);
+    const editorAuto = v.editorDomain === '';
     document.getElementById('domainField').classList.toggle('invalid', editorBad);
+    document.getElementById('domainField').classList.toggle('is-auto', editorAuto);
     if (editorBad) ok = false;
+
+    const whField = document.getElementById('webhookDomainField');
     if (arch === 'queue') {
-      const webhookBad = /seudominio/i.test(v.webhookDomain) || v.webhookDomain === '';
-      document.getElementById('webhookDomainField').classList.toggle('invalid', webhookBad);
+      const webhookBad = /seudominio/i.test(v.webhookDomain);
+      const webhookAuto = v.webhookDomain === '';
+      whField.classList.toggle('invalid', webhookBad);
+      whField.classList.toggle('is-auto', webhookAuto);
       if (webhookBad) ok = false;
     } else {
-      document.getElementById('webhookDomainField').classList.remove('invalid');
+      whField.classList.remove('invalid');
+      whField.classList.remove('is-auto');
     }
     return ok;
   }
@@ -331,21 +345,24 @@
   }
 
   function buildEasyPanel(v) {
-    const editorUrl = `https://${v.editorDomain}`;
+    // Se o domínio do editor estiver vazio, usa a variável mágica do EasyPanel.
+    const editorHost = v.editorDomain || '$(PRIMARY_DOMAIN)';
+    const editorUrl = `https://${editorHost}`;
     const services = [];
     if (arch === 'simple') {
       services.push({ type: 'app', data: {
         projectName: v.project, serviceName: 'n8n',
         source: { type: 'image', image: 'n8nio/n8n:latest' },
-        env: buildEnv(v, editorUrl, v.editorDomain, false),
+        env: buildEnv(v, editorUrl, editorHost, false),
         deploy: { replicas: 1, command: 'n8n start', zeroDowntime: true },
-        domains: [{ host: v.editorDomain, https: true, port: 5678, path: '/', middlewares: [], certificateResolver: '', wildcard: false, internalProtocol: 'http' }]
+        // sem domínio informado → omite o bloco; EasyPanel gera o domínio automático
+        domains: v.editorDomain ? [{ host: v.editorDomain, https: true, port: 5678, path: '/', middlewares: [], certificateResolver: '', wildcard: false, internalProtocol: 'http' }] : []
       }});
     } else {
       const mk = (serviceName, command, domain) => ({ type: 'app', data: {
         projectName: v.project, serviceName,
         source: { type: 'image', image: 'n8nio/n8n:latest' },
-        env: buildEnv(v, editorUrl, v.editorDomain, true),
+        env: buildEnv(v, editorUrl, editorHost, true),
         deploy: { replicas: 1, command, zeroDowntime: true },
         domains: domain ? [{ host: domain, https: true, port: 5678, path: '/', middlewares: [], certificateResolver: '', wildcard: false, internalProtocol: 'http' }] : []
       }});
@@ -504,13 +521,14 @@ volumes:
   // Atualiza os exemplos de DNS no checklist conforme digita
   function updateChecklist() {
     const v = vals();
-    document.getElementById('dnsEditor').textContent = v.editorDomain || 'agentes.seudominio.com.br';
-    document.getElementById('dnsWebhook').textContent = v.webhookDomain || 'hooks.seudominio.com.br';
+    document.getElementById('dnsEditor').textContent = v.editorDomain || '— domínio automático do EasyPanel —';
+    document.getElementById('dnsWebhook').textContent = v.webhookDomain || '— domínio automático do EasyPanel —';
   }
 
   // Chamado a cada alteração nos inputs: esconde o schema gerado (força novo "Gerar schema")
   function invalidate() {
     updateChecklist();
+    validateDomains(); // atualiza feedback visual (auto/inválido) em tempo real
     document.getElementById('outputBox').style.display = 'none';
     document.getElementById('bannerWarn').classList.remove('show');
   }
@@ -564,7 +582,7 @@ volumes:
   document.getElementById('pgPass').value = genHex(32);
   document.getElementById('redisPass').value = genHex(32);
   document.getElementById('encKey').value = genHex(32);
-  updateDomainVisibility(); updateChecklist();
+  updateDomainVisibility(); updateChecklist(); validateDomains();
 </script>
 </body>
 </html>
