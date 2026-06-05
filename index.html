@@ -126,7 +126,31 @@
   .note code { background: var(--bg-input); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--green); }
   .banner-warn { margin-top: 16px; padding: 14px 18px; background: #ff5c7215; border: 1px solid #ff5c7244; border-radius: 10px; font-size: 13px; color: #ffb3bd; display: none; }
   .banner-warn.show { display: block; }
-  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120px); background: var(--green); color: #04130c; font-weight: 700; font-size: 14px; padding: 13px 26px; border-radius: 10px; transition: transform .3s cubic-bezier(.2,.9,.3,1.3); z-index: 50; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(5,5,10,.78); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 60; padding: 24px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 18px; max-width: 720px; width: 100%; max-height: 86vh; display: flex; flex-direction: column; box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+  .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px 26px 18px; border-bottom: 1px solid var(--border); }
+  .modal-head h2 { font-size: 19px; font-weight: 700; letter-spacing: -.3px; }
+  .modal-sub { font-size: 13px; color: var(--text-dim); margin-top: 4px; font-family: var(--mono); }
+  .modal-close { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 15px; flex-shrink: 0; transition: all .18s; }
+  .modal-close:hover { border-color: var(--red); color: var(--red); }
+  .modal-body { padding: 22px 26px 28px; overflow-y: auto; }
+  .modal-body::-webkit-scrollbar { width: 10px; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  .steps { list-style: none; counter-reset: stp; display: grid; gap: 18px; }
+  .steps > li { counter-increment: stp; display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: start; }
+  .steps > li::before { content: counter(stp); width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .step-body { padding-top: 3px; }
+  .step-body .t { font-weight: 600; font-size: 14.5px; margin-bottom: 4px; }
+  .step-body .d { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+  .step-body .d code { background: var(--bg-input); padding: 1px 6px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--green); }
+  .step-body .d b { color: var(--text); }
+  .cmd { position: relative; margin-top: 10px; background: #0d0d14; border: 1px solid var(--border); border-radius: 9px; padding: 12px 44px 12px 14px; font-family: var(--mono); font-size: 12.5px; color: var(--green); overflow-x: auto; white-space: pre; }
+  .cmd-copy { position: absolute; right: 7px; top: 7px; background: var(--accent-dim); border: none; color: var(--accent); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all .18s; }
+  .cmd-copy:hover { background: var(--accent); color: #fff; }
+  .step-tag { display: inline-block; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .5px; padding: 2px 8px; border-radius: 5px; margin-left: 8px; vertical-align: middle; }
+  .step-tag.opt { background: #ffc85718; color: var(--amber); }
+  .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(120px); background: var(--green); color: #04130c; font-weight: 700; font-size: 14px; padding: 13px 26px; border-radius: 10px; transition: transform .3s cubic-bezier(.2,.9,.3,1.3); z-index: 80; }
   .toast.show { transform: translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -146,7 +170,7 @@
       <li><div>
         <b>Domínio próprio</b> <span class="opttag">(opcional)</span>
         <ul class="subitems">
-          <li><span><b>Com domínio próprio:</b> compre em um registrador (Registro.br, Cloudflare, GoDaddy…) e crie registros <code>A</code> apontando os subdomínios pro IP da VPS — <code id="dnsEditor">agentes.seudominio.com.br</code> (editor)<span id="dnsWebhookExtra"> e <code id="dnsWebhook">hooks.seudominio.com.br</code> (webhook)</span>.</span></li>
+          <li><span><b>Com domínio próprio:</b> compre em um registrador (Registro.br, Cloudflare, GoDaddy…) e crie registros <code>A</code> apontando os subdomínios pro IP da VPS — <code id="dnsEditor">n8n.seudominio.com.br</code><span id="dnsEditorLabel"> (editor)</span><span id="dnsWebhookExtra"> e <code id="dnsWebhook">hooks.seudominio.com.br</code> (webhook)</span>.</span></li>
           <li><span><b>Sem domínio:</b> deixe os campos vazios e o EasyPanel gera um domínio automático pra você (sem precisar configurar DNS).</span></li>
         </ul>
       </div></li>
@@ -279,6 +303,7 @@
       <h2>Schema gerado</h2>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <span class="filename" id="filename"></span>
+        <button class="btn btn-primary btn-sm" id="stepsBtn" onclick="openSteps()">✦ Gerei o schema, e agora?</button>
         <button class="btn btn-ghost btn-sm" id="copyBtn" onclick="copySchema()">⧉ Copiar</button>
         <button class="btn btn-ghost btn-sm" id="dlBtn" onclick="downloadSchema()">↓ Baixar</button>
       </div>
@@ -288,6 +313,22 @@
   </div>
 
   <div class="banner-warn" id="bannerWarn">⚠️ Há domínios com "seudominio" — troque por um domínio real ou deixe vazio antes de gerar.</div>
+</div>
+
+<!-- Modal: passo a passo pós-instalação -->
+<div class="modal-overlay" id="stepsModal" onclick="if(event.target===this)closeSteps()">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="stepsTitle">Passo a passo pós-instalação</h2>
+        <p class="modal-sub" id="stepsSub"></p>
+      </div>
+      <button class="modal-close" onclick="closeSteps()" title="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <ol class="steps" id="stepsList"></ol>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast">Copiado!</div>
@@ -352,6 +393,7 @@
     // webhook domain: EasyPanel + queue
     document.getElementById('webhookDomainField').style.display = (isEP && arch === 'queue') ? '' : 'none';
     document.getElementById('dnsWebhookExtra').style.display = (arch === 'queue') ? '' : 'none';
+    document.getElementById('dnsEditorLabel').style.display = (arch === 'queue') ? '' : 'none';
     // grupo Evolution inteiro só aparece se ligada; o campo de domínio só faz sentido no EasyPanel
     const evoOn = svc('evolution');
     document.getElementById('evoGroup').style.display = evoOn ? '' : 'none';
@@ -639,7 +681,7 @@ ${baseEnv}${arch === 'queue' ? '\n' + queueEnv : ''}
 
   function updateChecklist() {
     const v = vals();
-    document.getElementById('dnsEditor').textContent = v.editorDomain || 'agentes.seudominio.com.br';
+    document.getElementById('dnsEditor').textContent = v.editorDomain || 'n8n.seudominio.com.br';
     document.getElementById('dnsWebhook').textContent = v.webhookDomain || 'hooks.seudominio.com.br';
   }
 
@@ -679,9 +721,149 @@ ${baseEnv}${arch === 'queue' ? '\n' + queueEnv : ''}
       note = `<strong>Local · Fila:</strong> replica produção na sua máquina (editor + webhook + worker + Postgres + Redis${svc('evolution') ? ' + Evolution' : ''}).`;
     document.getElementById('modeNote').innerHTML = note;
 
+    // guarda o estado do que foi REALMENTE gerado (pro passo a passo refletir isso)
+    generatedState = {
+      env, arch, project: v.project,
+      redis: svc('redis') || arch === 'queue',
+      evolution: svc('evolution'),
+      editorDomain: v.editorDomain, webhookDomain: v.webhookDomain, evoDomain: v.evoDomain
+    };
+
     document.getElementById('outputBox').style.display = '';
     document.getElementById('outputBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
+  // ===== Passo a passo pós-instalação (modal) =====
+  let generatedState = null;
+
+  function cmd(text) {
+    return `<div class="cmd">${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}<button class="cmd-copy" onclick="copyCmd(this)" title="Copiar">⧉</button></div>`;
+  }
+  function copyCmd(btn) {
+    const raw = btn.parentNode.textContent.replace(/⧉$/, '').trim();
+    navigator.clipboard.writeText(raw).then(() => toast('Comando copiado!'));
+  }
+  function step(title, desc, tag) {
+    const tagHtml = tag ? `<span class="step-tag opt">${tag}</span>` : '';
+    return `<li><div class="step-body"><div class="t">${title}${tagHtml}</div><div class="d">${desc}</div></div></li>`;
+  }
+
+  function buildSteps() {
+    const s = generatedState; if (!s) return '';
+    const out = [];
+
+    if (s.env === 'easypanel') {
+      out.push(step('Criar o projeto no EasyPanel',
+        `No EasyPanel, clique em <b>Create Project</b> e dê o nome <code>${s.project}</code>.`));
+      out.push(step('Colar o schema',
+        `Dentro do projeto, clique em <b>+ Service → From Schema</b> (ou <b>Create from Schema</b>), cole o schema gerado e confirme. Os serviços vão aparecer na tela do projeto.`));
+
+      // Bancos: sempre juntos num passo só
+      let bancosDesc = `Abra o serviço <b>postgres</b> → aba <b>Console</b> → <b>Postgres Client</b>. Quando abrir o prompt, crie os bancos necessários:` +
+        cmd('CREATE DATABASE n8n;');
+      if (s.evolution) bancosDesc += cmd('CREATE DATABASE evolution;');
+      bancosDesc += `Confira com <code>\\l</code> — os bancos criados devem aparecer na lista.`;
+      out.push(step('Criar os bancos de dados', bancosDesc));
+
+      // Domínios: inteligente — só lista serviços que NÃO têm domínio próprio
+      const n8nSvcName = s.arch === 'simple' ? 'n8n' : 'n8n_editor';
+      const hasN8nDomain = !!s.editorDomain;
+      const hasWebhookDomain = !!s.webhookDomain;
+      const hasEvoDomain = !!s.evoDomain;
+
+      // monta linhas de acesso final (pro último passo)
+      const n8nAccessDomain = s.editorDomain || `${n8nSvcName}-${s.project}.SEU_DOMINIO_PADRAO`;
+      const evoAccessDomain = s.evoDomain || `evolution-${s.project}.SEU_DOMINIO_PADRAO`;
+
+      // quais serviços precisam de domínio criado manualmente agora
+      const needDomain = [];
+      if (!hasN8nDomain) needDomain.push({ svc: n8nSvcName, port: '5678' });
+      if (s.arch === 'queue' && !hasWebhookDomain) needDomain.push({ svc: 'n8n_webhook', port: '5678' });
+      if (s.evolution && !hasEvoDomain) needDomain.push({ svc: 'evolution', port: '8080' });
+
+      if (needDomain.length > 0) {
+        const domLines = needDomain.map(({ svc: sv, port }) =>
+          `<b>${sv}</b> → <b>HTTPS</b> ligado · <b>Host</b>: <code>${sv}-${s.project}.SEU_DOMINIO_PADRAO</code> · <b>Porta</b>: <code>${port}</code>`).join('<br>');
+        out.push(step('Adicionar domínio nos serviços',
+          `Os serviços abaixo não vieram com domínio — você precisa adicionar um. Em cada um: serviço → aba <b>Domínios</b> → <b>Adicionar Domínio</b>:<br><br>${domLines}<br><br>` +
+          `Pra encontrar seu domínio padrão: EasyPanel → <b>Settings</b> → campo <b>Default Domain</b>. O Host fica <code>[serviço]-[projeto].SEU_DOMINIO_PADRAO</code>.`));
+      } else {
+        // todos os domínios foram fornecidos — só lembra de conferir o DNS
+        const allDomains = [s.editorDomain];
+        if (s.arch === 'queue' && s.webhookDomain) allDomains.push(s.webhookDomain);
+        if (s.evolution && s.evoDomain) allDomains.push(s.evoDomain);
+        out.push(step('Confirmar o DNS',
+          `Você já informou domínios próprios. Confira que os registros <code>A</code> de cada domínio abaixo apontam pro IP da VPS antes de implantar:<br><br>` +
+          allDomains.map(d => `<code>${d}</code>`).join('<br>')));
+      }
+
+      out.push(step('Implantar (Deploy)',
+        `Volte em cada serviço e clique em <b>Implantar</b>. Aguarde ficarem verdes e confira os logs — o erro <code>database does not exist</code> deve sumir.`));
+
+      out.push(step('Acessar o n8n',
+        `Abra no navegador: <code>https://${n8nAccessDomain}</code>. Na primeira vez, crie a conta de owner.`));
+
+      if (s.evolution) {
+        out.push(step('Ativar e acessar a Evolution',
+          `Acesse o domínio da Evolution uma vez pra ativá-la:` +
+          cmd(`https://${evoAccessDomain}`) +
+          `Depois, abra o <b>painel manager</b> adicionando <code>/manager</code> na URL:` +
+          cmd(`https://${evoAccessDomain}/manager`) +
+          `Use a <b>Evolution API Key</b> (gerada no schema) pra logar e parear o WhatsApp via QR code.`, 'Evolution'));
+      }
+
+      if (s.redis) {
+        out.push(step('Redis — nada a fazer',
+          `Sobe pronto com a senha do schema. ${s.arch === 'queue' ? 'No modo fila é essencial pra distribuir as execuções.' : 'Fica disponível pros seus workflows via nó Redis.'}`, 'sem ação'));
+      }
+    } else {
+      // LOCAL
+      out.push(step('Salvar o arquivo',
+        `Salve o conteúdo gerado como <code>docker-compose.yml</code> numa pasta dedicada (ex.: <code>~/Documents/${s.project}</code>).`));
+      out.push(step('Conferir o Docker',
+        `Abra o <b>Docker Desktop</b> e espere ficar ativo (ícone verde). No Linux, garanta que o serviço docker está rodando.`));
+      out.push(step('Subir os containers',
+        `Abra o terminal na pasta do arquivo e rode:` +
+        cmd('docker compose up -d') +
+        `A primeira vez baixa as imagens (n8n, postgres${s.redis ? ', redis' : ''}${s.evolution ? ', evolution' : ''}) — pode demorar um pouco.`));
+      out.push(step('Conferir se subiu',
+        `Veja o status dos containers:` + cmd('docker compose ps') +
+        `Todos devem estar <code>running</code>/<code>healthy</code>. O banco <code>n8n</code> é criado automaticamente aqui (diferente do EasyPanel).`));
+      if (s.evolution) {
+        out.push(step('Criar o banco da Evolution',
+          `O banco <code>evolution</code> não é criado sozinho. Rode:` +
+          cmd(`docker compose exec postgres psql -U postgres -c "CREATE DATABASE evolution;"`) +
+          `Depois reinicie a Evolution: <code>docker compose restart evolution</code>.`, 'Evolution'));
+      }
+      out.push(step('Acessar o n8n',
+        `Abra <code>http://localhost:5678</code> no navegador. Na primeira vez, crie a conta de owner.`));
+      if (s.evolution) {
+        out.push(step('Acessar a Evolution',
+          `A Evolution fica em <code>http://localhost:8080</code>. Pra abrir o painel, adicione <code>/manager</code>:` +
+          cmd('http://localhost:8080/manager') +
+          `Use a <b>API Key</b> (do arquivo) pra logar e parear o WhatsApp.`, 'Evolution'));
+      }
+      out.push(step('Comandos úteis',
+        `Parar (sem perder dados): <code>docker compose stop</code> · Religar: <code>docker compose start</code> · Ver logs: <code>docker compose logs -f n8n</code>. <b>Evite</b> <code>docker compose down -v</code> — o <code>-v</code> apaga os volumes (todos os dados).`));
+    }
+    return out.join('');
+  }
+
+  function openSteps() {
+    if (!generatedState) return;
+    const s = generatedState;
+    const envLabel = s.env === 'easypanel' ? 'EasyPanel' : 'Local (Docker)';
+    const archLabel = s.arch === 'queue' ? 'Fila (queue)' : 'Simples';
+    const parts = ['Postgres'];
+    if (s.redis) parts.push('Redis');
+    if (s.evolution) parts.push('Evolution');
+    document.getElementById('stepsTitle').textContent = 'Gerei o schema, e agora?';
+    document.getElementById('stepsSub').textContent = `${envLabel} · ${archLabel} · n8n + ${parts.join(' + ')}`;
+    document.getElementById('stepsList').innerHTML = buildSteps();
+    document.getElementById('stepsModal').classList.add('show');
+  }
+  function closeSteps() { document.getElementById('stepsModal').classList.remove('show'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSteps(); });
 
   function copySchema() { navigator.clipboard.writeText(currentSchema()).then(() => toast('Schema copiado!')); }
   function downloadSchema() {
