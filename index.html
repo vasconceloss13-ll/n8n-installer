@@ -40,15 +40,16 @@
   .subitems li { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; }
   .subitems li::before { content: "—"; color: var(--accent); flex-shrink: 0; }
 
-  .controls { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 24px; }
+  .controls { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 16px; padding: 22px 28px; margin-bottom: 10px; }
+  .controls:last-of-type { margin-bottom: 24px; }
   .controls-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
   .controls-head h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); font-weight: 600; }
   .head-right { display: flex; align-items: center; gap: 10px; }
   .kebab { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-dim); width: 38px; height: 38px; border-radius: 9px; cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all .18s; }
   .kebab:hover, .kebab.open { border-color: var(--accent); color: var(--accent); }
   .group { margin-bottom: 22px; }
-  .group-title { font-size: 11px; color: var(--accent); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  .save-note { font-size: 12px; color: var(--text-dim); margin: 4px 0 0; display: flex; gap: 8px; align-items: center; font-family: var(--mono); }
+  .group-title { font-size: 11px; color: var(--accent); font-family: var(--mono); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 18px; }
+  .save-note { font-size: 12px; color: var(--text-dim); margin: 8px 0 0; display: flex; gap: 8px; align-items: center; font-family: var(--mono); }
   .save-note .ic { color: var(--amber); font-size: 14px; }
   .mode-toggle { display: flex; gap: 6px; background: var(--bg-input); padding: 5px; border-radius: 10px; }
   .mode-toggle button { font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 8px 16px; border: none; background: transparent; color: var(--text-dim); border-radius: 7px; cursor: pointer; transition: all .18s; }
@@ -104,7 +105,7 @@
   .arch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px; background: var(--bg-input); border-radius: 11px; }
   .arch-row .lbl { font-size: 12px; color: var(--text-dim); font-family: var(--mono); }
 
-  .actions { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+  .actions { display: flex; gap: 12px; margin: 0 0 24px; flex-wrap: wrap; }
   .btn { font-family: var(--sans); font-weight: 700; font-size: 14px; padding: 13px 24px; border-radius: 10px; border: none; cursor: pointer; transition: all .18s; display: inline-flex; align-items: center; gap: 8px; }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-primary:hover { background: #7169f9; transform: translateY(-1px); }
@@ -162,7 +163,31 @@
     <p class="sub">Gera as chaves de segurança automaticamente e monta o schema completo. Escolha o ambiente, ative os serviços que quer e copie.</p>
   </header>
 
-  <!-- Requisitos EasyPanel -->
+  <!-- Card: Configuração (env + kebab + modo avançado) -->
+  <div class="controls">
+    <div class="controls-head">
+      <h2>Configuração</h2>
+      <div class="head-right">
+        <div class="mode-toggle">
+          <button id="env-easypanel" class="active" onclick="setEnv('easypanel')">EasyPanel</button>
+          <button id="env-local" onclick="setEnv('local')">Local (Docker)</button>
+        </div>
+        <button class="kebab" id="advBtn" onclick="toggleAdvanced()" title="Mais opções">⋮</button>
+      </div>
+    </div>
+    <div class="advanced-panel" id="advPanel">
+      <div class="arch-row">
+        <span class="lbl">Arquitetura:</span>
+        <div class="mode-toggle">
+          <button id="arch-simple" class="active" onclick="setArch('simple')">Simples</button>
+          <button id="arch-queue" onclick="setArch('queue')">Fila (queue)</button>
+        </div>
+        <span class="lbl" id="archHint">Recomendado pra maioria dos casos</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card: Pré-requisitos EasyPanel -->
   <div class="reqs" id="reqsBox">
     <h3>✦ Antes de começar — pré-requisitos</h3>
     <ol>
@@ -177,7 +202,7 @@
     </ol>
   </div>
 
-  <!-- Requisitos Local -->
+  <!-- Card: Pré-requisitos Local -->
   <div class="reqs" id="reqsBoxLocal" style="display:none;">
     <h3>✦ Antes de começar — pré-requisitos</h3>
     <ol>
@@ -188,61 +213,39 @@
     </ol>
   </div>
 
+  <!-- Card: Serviços -->
   <div class="controls">
-    <div class="controls-head">
-      <h2>Configuração</h2>
-      <div class="head-right">
-        <div class="mode-toggle">
-          <button id="env-easypanel" class="active" onclick="setEnv('easypanel')">EasyPanel</button>
-          <button id="env-local" onclick="setEnv('local')">Local (Docker)</button>
-        </div>
-        <button class="kebab" id="advBtn" onclick="toggleAdvanced()" title="Mais opções">⋮</button>
+    <div class="blk-title">Serviços incluídos no schema</div>
+    <div class="svc-list">
+      <div class="svc on locked" id="svc-postgres">
+        <div class="svc-info"><span class="svc-name">Postgres</span><span class="svc-tag">obrigatório</span></div>
+        <label class="switch"><input type="checkbox" id="tg-postgres" checked disabled><span class="slider"></span></label>
+      </div>
+      <div class="svc on" id="svc-redis">
+        <div class="svc-info"><span class="svc-name">Redis</span><span class="svc-tag" id="redis-tag">opcional</span></div>
+        <label class="switch"><input type="checkbox" id="tg-redis" checked onchange="invalidate()"><span class="slider"></span></label>
+      </div>
+      <div class="svc on" id="svc-evolution">
+        <div class="svc-info"><span class="svc-name">Evolution API</span><span class="svc-tag">opcional · WhatsApp</span></div>
+        <label class="switch"><input type="checkbox" id="tg-evolution" checked onchange="invalidate()"><span class="slider"></span></label>
       </div>
     </div>
+  </div>
 
-    <!-- Modo avançado (abre pelo kebab) -->
-    <div class="advanced-panel" id="advPanel">
-      <div class="arch-row">
-        <span class="lbl">Arquitetura:</span>
-        <div class="mode-toggle">
-          <button id="arch-simple" class="active" onclick="setArch('simple')">Simples</button>
-          <button id="arch-queue" onclick="setArch('queue')">Fila (queue)</button>
-        </div>
-        <span class="lbl" id="archHint">Recomendado pra maioria dos casos</span>
+  <!-- Card: Geral -->
+  <div class="controls">
+    <div class="group-title">Geral</div>
+    <div class="grid">
+      <div class="field">
+        <label>Nome do projeto</label>
+        <div class="field-input"><input id="projectName" value="lunarlabs" oninput="invalidate()"></div>
       </div>
     </div>
+  </div>
 
-    <!-- Serviços (toggles) -->
-    <div class="services-block">
-      <div class="blk-title">Serviços incluídos no schema</div>
-      <div class="svc-list">
-        <div class="svc on locked" id="svc-postgres">
-          <div class="svc-info"><span class="svc-name">Postgres</span><span class="svc-tag">obrigatório</span></div>
-          <label class="switch"><input type="checkbox" id="tg-postgres" checked disabled><span class="slider"></span></label>
-        </div>
-        <div class="svc on" id="svc-redis">
-          <div class="svc-info"><span class="svc-name">Redis</span><span class="svc-tag" id="redis-tag">opcional</span></div>
-          <label class="switch"><input type="checkbox" id="tg-redis" checked onchange="invalidate()"><span class="slider"></span></label>
-        </div>
-        <div class="svc on" id="svc-evolution">
-          <div class="svc-info"><span class="svc-name">Evolution API</span><span class="svc-tag">opcional · WhatsApp</span></div>
-          <label class="switch"><input type="checkbox" id="tg-evolution" checked onchange="invalidate()"><span class="slider"></span></label>
-        </div>
-      </div>
-    </div>
-
-    <!-- Grupo: Geral -->
-    <div class="group">
-      <div class="group-title">Geral</div>
-      <div class="grid">
-        <div class="field">
-          <label>Nome do projeto</label>
-          <div class="field-input"><input id="projectName" value="lunarlabs" oninput="invalidate()"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Grupo: n8n -->
+  <!-- Card: n8n + Evolution + Aviso + Botão -->
+  <div class="controls">
+    <!-- n8n -->
     <div class="group">
       <div class="group-title">n8n</div>
       <div class="grid">
@@ -274,7 +277,7 @@
       </div>
     </div>
 
-    <!-- Grupo: Evolution -->
+    <!-- Evolution API (some quando desligada) -->
     <div class="group" id="evoGroup">
       <div class="group-title">Evolution API</div>
       <div class="grid">
@@ -291,11 +294,13 @@
       </div>
     </div>
 
+    <!-- Aviso discreto -->
     <p class="save-note"><span class="ic">ⓘ</span> As senhas e chaves ficam embutidas nas variáveis de ambiente do schema gerado.</p>
+  </div>
 
-    <div class="actions">
-      <button class="btn btn-primary" id="genBtn" onclick="generateSchema()">✦ Gerar schema</button>
-    </div>
+  <!-- Botão Gerar (solto, destaque) -->
+  <div class="actions">
+    <button class="btn btn-primary" id="genBtn" onclick="generateSchema()">✦ Gerar schema</button>
   </div>
 
   <div class="output" id="outputBox" style="display:none;">
